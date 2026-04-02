@@ -1,5 +1,4 @@
 import time
-from functools import lru_cache
 from os import getenv
 
 import requests
