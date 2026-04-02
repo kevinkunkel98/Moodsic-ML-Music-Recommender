@@ -1,7 +1,10 @@
+import logging
 import time
 from os import getenv
 
 import requests
+
+logger = logging.getLogger(__name__)
 
 SPOTIFY_TOKEN_URL = "https://accounts.spotify.com/api/token"
 SPOTIFY_SEARCH_URL = "https://api.spotify.com/v1/search"
@@ -53,7 +56,8 @@ def search_tracks(query: str, limit: int = 50) -> list[dict]:
             timeout=10,
         )
         response.raise_for_status()
-    except requests.RequestException:
+    except requests.RequestException as exc:
+        logger.error("Spotify search failed: %s", exc)
         return []
 
     items = response.json().get("tracks", {}).get("items", [])
