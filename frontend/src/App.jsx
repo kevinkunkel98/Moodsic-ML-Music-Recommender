@@ -1,101 +1,155 @@
-import React, { useState } from 'react'
+import { useState, useRef, useCallback } from 'react'
 import axios from 'axios'
+import Scene from './Scene'
+import ResultCard from './ResultCard'
+import { classifyMood } from './moodClassifier'
+
+const DEFAULT_MOOD = { speed: 1.0, intensity: 1.0, color1: '#7b2fff', color2: '#00ffcc', mood: 'default' }
+const API_BASE = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000'
 
 export default function App() {
   const [query, setQuery] = useState('')
-  const [topK, setTopK] = useState(3)
-  const [results, setResults] = useState(null)
   const [loading, setLoading] = useState(false)
+  const [results, setResults] = useState([])
+  const [selectedTrack, setSelectedTrack] = useState(null)
+  const [moodConfig, setMoodConfig] = useState(DEFAULT_MOOD)
   const [error, setError] = useState(null)
+  const flashRef = useRef(null)
 
-  async function submit(e) {
+  const submit = useCallback(async (e) => {
     e.preventDefault()
+    if (!query.trim()) return
     setLoading(true)
     setError(null)
+    setSelectedTrack(null)
+
+    // Trigger glitch animation immediately
+    flashRef.current?.current?.flash?.()
+
+    // Classify mood and update blob
+    const mood = classifyMood(query)
+    setMoodConfig(mood)
+
     try {
-      const res = await axios.post('http://127.0.0.1:8000/recommend', null, {
-        params: { query, top_k: topK },
+      const res = await axios.post(`${API_BASE}/recommend`, null, {
+        params: { query: query.trim(), top_k: 5 },
       })
       setResults(res.data)
     } catch (err) {
-      setError(err.message)
+      setError('Could not reach the server. Is the backend running?')
+      setResults([])
     } finally {
       setLoading(false)
     }
-  }
+  }, [query])
 
   return (
-    <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
-      <div className="w-full max-w-2xl bg-white rounded-lg shadow p-6">
-        <h1 className="text-2xl font-semibold mb-4">Moodsic — Recommend</h1>
+    <>
+      {/* Three.js full-screen scene */}
+      <Scene
+        moodConfig={moodConfig}
+        results={results}
+        onSelectTrack={setSelectedTrack}
+        onFlashRef={flashRef}
+      />
 
-        <form onSubmit={submit} className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-slate-700">Query</label>
-            <textarea
-              rows={3}
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2"
-              placeholder="Paste parameters or writing sample here"
-            />
-          </div>
+      {/* UI overlay */}
+      <div style={{
+        position: 'fixed', inset: 0, zIndex: 10,
+        display: 'flex', flexDirection: 'column',
+        alignItems: 'center', pointerEvents: 'none',
+      }}>
+        {/* Wordmark */}
+        <div style={{
+          marginTop: '2.5rem',
+          fontSize: 'clamp(1.8rem, 4vw, 2.8rem)',
+          fontWeight: 700,
+          letterSpacing: '0.25em',
+          textTransform: 'uppercase',
+          color: 'var(--color-blob-2)',
+          textShadow: '0 0 20px var(--color-blob-2), 0 0 40px rgba(0,255,204,0.4)',
+          pointerEvents: 'none',
+          userSelect: 'none',
+        }}>
+          Moodsic
+        </div>
 
-          <div>
-            <label className="block text-sm font-medium text-slate-700">Top K</label>
+        {/* Spacer */}
+        <div style={{ flex: 1 }} />
+
+        {/* Search form */}
+        <form
+          onSubmit={submit}
+          style={{
+            marginBottom: '3.5rem',
+            width: 'min(480px, 90vw)',
+            pointerEvents: 'all',
+          }}
+        >
+          <div style={{
+            display: 'flex',
+            gap: '10px',
+            background: 'rgba(10,0,30,0.6)',
+            border: '1px solid rgba(123,47,255,0.5)',
+            borderRadius: '50px',
+            padding: '10px 10px 10px 20px',
+            backdropFilter: 'blur(20px)',
+            boxShadow: '0 0 30px rgba(123,47,255,0.2)',
+          }}>
             <input
-              type="number"
-              value={topK}
-              onChange={(e) => setTopK(Number(e.target.value))}
-              className="mt-1 block w-32 rounded-md border-gray-300 p-2"
-              min={1}
+              type="text"
+              value={query}
+              onChange={e => setQuery(e.target.value)}
+              placeholder="describe your mood..."
+              disabled={loading}
+              style={{
+                flex: 1,
+                background: 'none',
+                border: 'none',
+                outline: 'none',
+                color: 'var(--color-text)',
+                fontSize: '15px',
+                fontFamily: 'var(--font-main)',
+              }}
             />
-          </div>
-
-          <div className="flex gap-2">
             <button
               type="submit"
-              className="px-4 py-2 bg-slate-800 text-white rounded-md"
-              disabled={loading}
-            >
-              {loading ? 'Loading…' : 'Send'}
-            </button>
-            <button
-              type="button"
-              className="px-4 py-2 bg-gray-100 rounded-md"
-              onClick={() => {
-                setQuery('')
-                setResults(null)
+              disabled={loading || !query.trim()}
+              style={{
+                background: loading ? 'rgba(123,47,255,0.3)' : 'var(--color-blob-1)',
+                border: 'none',
+                borderRadius: '40px',
+                padding: '8px 20px',
+                color: '#fff',
+                fontSize: '14px',
+                fontFamily: 'var(--font-main)',
+                fontWeight: 600,
+                cursor: loading ? 'wait' : 'pointer',
+                transition: 'var(--transition-smooth)',
+                boxShadow: loading ? 'none' : '0 0 15px rgba(123,47,255,0.6)',
               }}
             >
-              Clear
+              {loading ? '...' : '→'}
             </button>
           </div>
-        </form>
 
-        <div className="mt-6">
-          {error && <div className="text-red-600">Error: {error}</div>}
-
-          {results && (
-            <div>
-              <h2 className="font-semibold mb-2">Results</h2>
-              <ul className="space-y-2">
-                {results.map((r, i) => (
-                  <li key={i} className="p-2 border rounded">
-                    <div className="font-medium">{r.title}</div>
-                    <div className="text-sm text-slate-600">Score: {r.score}</div>
-                    {r.spotify_url && (
-                      <a href={r.spotify_url} className="text-blue-600 text-sm" target="_blank" rel="noreferrer">
-                        Open on Spotify
-                      </a>
-                    )}
-                  </li>
-                ))}
-              </ul>
-            </div>
+          {error && (
+            <p style={{
+              marginTop: '8px',
+              textAlign: 'center',
+              color: 'var(--color-neon-pink)',
+              fontSize: '13px',
+            }}>
+              {error}
+            </p>
           )}
-        </div>
+        </form>
       </div>
-    </div>
+
+      {/* Result card */}
+      {selectedTrack && (
+        <ResultCard track={selectedTrack} onClose={() => setSelectedTrack(null)} />
+      )}
+    </>
   )
 }
