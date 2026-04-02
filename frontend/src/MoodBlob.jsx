@@ -95,15 +95,9 @@ const MoodBlob = forwardRef(function MoodBlob(
   ref
 ) {
   const meshRef = useRef()
-
-  useImperativeHandle(ref, () => ({
-    punch() {
-      if (!meshRef.current) return
-      gsap.timeline()
-        .to(meshRef.current.scale, { x: 1.4, y: 1.4, z: 1.4, duration: 0.15, ease: 'power2.out' })
-        .to(meshRef.current.scale, { x: 1.0, y: 1.0, z: 1.0, duration: 0.3, ease: 'elastic.out(1, 0.5)' })
-    },
-  }))
+  // Plain JS proxy for GSAP — avoids attaching ._gsap to the Three.js Vector3
+  // which would cause a circular reference when R3F serializes props for diffing
+  const scaleProxy = useRef({ s: 1.0 })
 
   const uniforms = useMemo(
     () => ({
@@ -117,17 +111,29 @@ const MoodBlob = forwardRef(function MoodBlob(
     []
   )
 
-  // Update uniforms when props change
+  // Update uniforms and sync scale proxy → mesh every frame
   useFrame((_, delta) => {
     uniforms.uTime.value += delta
     uniforms.uSpeed.value = speed
     uniforms.uIntensity.value = intensity
     uniforms.uColor1.value.set(color1)
     uniforms.uColor2.value.set(color2)
+    if (meshRef.current) {
+      const s = scaleProxy.current.s
+      meshRef.current.scale.set(s, s, s)
+    }
   })
 
+  useImperativeHandle(ref, () => ({
+    punch() {
+      gsap.timeline()
+        .to(scaleProxy.current, { s: 1.4, duration: 0.15, ease: 'power2.out' })
+        .to(scaleProxy.current, { s: 1.0, duration: 0.3, ease: 'elastic.out(1, 0.5)' })
+    },
+  }))
+
   return (
-    <mesh ref={meshRef} scale={scale}>
+    <mesh ref={meshRef}>
       <icosahedronGeometry args={[1.8, 6]} />
       <shaderMaterial
         vertexShader={vertexShader}

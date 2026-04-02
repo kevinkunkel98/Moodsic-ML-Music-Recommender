@@ -1,5 +1,5 @@
 import { useRef, useEffect, forwardRef, useImperativeHandle } from 'react'
-import { Canvas } from '@react-three/fiber'
+import { Canvas, useFrame } from '@react-three/fiber'
 import { Stars } from '@react-three/drei'
 import { EffectComposer, ChromaticAberration, Bloom } from '@react-three/postprocessing'
 import { BlendFunction } from 'postprocessing'
@@ -10,15 +10,24 @@ import SatelliteOrbs from './SatelliteOrbs'
 
 // Inner component that has access to R3F context
 function SceneInner({ moodConfig, results, onSelectTrack, aberrationRef }) {
+  // Use a plain JS proxy object for GSAP — never animate the Vector2 directly
+  // (GSAP attaches ._gsap to its target; if that target is a Three.js object
+  // R3F's prop-diffing JSON.stringify hits a circular reference)
+  const aberrationProxy = useRef({ x: 0.001, y: 0.001 })
   const aberrationOffsetRef = useRef(new Vector2(0.001, 0.001))
+
+  // Sync proxy → Vector2 every frame
+  useFrame(() => {
+    aberrationOffsetRef.current.set(aberrationProxy.current.x, aberrationProxy.current.y)
+  })
 
   // Expose aberration control to parent via ref
   useImperativeHandle(aberrationRef, () => ({
     flash() {
-      // GSAP animate the aberration offset
+      // GSAP animates the plain proxy object — never the Three.js Vector2
       gsap.timeline()
-        .to(aberrationOffsetRef.current, { x: 0.008, y: 0.004, duration: 0.2, ease: 'power2.in' })
-        .to(aberrationOffsetRef.current, { x: 0.001, y: 0.001, duration: 0.3, ease: 'power2.out' })
+        .to(aberrationProxy.current, { x: 0.008, y: 0.004, duration: 0.2, ease: 'power2.in' })
+        .to(aberrationProxy.current, { x: 0.001, y: 0.001, duration: 0.3, ease: 'power2.out' })
 
       // Scanline flash on body
       document.body.classList.add('scanline-flash')
