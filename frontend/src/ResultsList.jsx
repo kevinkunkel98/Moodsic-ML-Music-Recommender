@@ -180,6 +180,8 @@ export default function ResultsList({ tracks = [], visible, onSelect, flashScene
         .to(flashOverlayRef.current, { opacity: 0, duration: 0.08, ease: 'power2.out' }, i * 0.15 + 0.07)
         .call(() => flashScene?.(), [], i * 0.15)
     }
+
+    return () => pulseTimeline.kill()
   }, [visible, tracks])
 
   useEffect(() => {
@@ -189,7 +191,9 @@ export default function ResultsList({ tracks = [], visible, onSelect, flashScene
     const heroEl = rowRefs.current[0]
     if (!heroEl) return
 
-    gsap.fromTo(
+    const tweens = []
+
+    const heroTween = gsap.fromTo(
       heroEl,
       { y: 60, opacity: 0, scale: 1 },
       {
@@ -200,46 +204,53 @@ export default function ResultsList({ tracks = [], visible, onSelect, flashScene
         ease: 'back.out(1.2)',
         onComplete: () => {
           // After 1.5s hold, reveal #2 and #3
-          gsap.delayedCall(1.5, () => {
+          const holdTimer = gsap.delayedCall(1.5, () => {
             // Step 3: #2 and #3 at 80% size, 0.3s apart
             ;[1, 2].forEach((idx, i) => {
               const el = rowRefs.current[idx]
               if (!el) return
-              gsap.fromTo(
+              tweens.push(gsap.fromTo(
                 el,
                 { y: 30, opacity: 0 },
                 { y: 0, opacity: 1, duration: 0.4, delay: i * 0.3, ease: 'back.out(1.4)' }
-              )
+              ))
             })
 
             // Step 4: #4 and #5 fade in at 60% opacity, 0.2s apart
             ;[3, 4].forEach((idx, i) => {
               const el = rowRefs.current[idx]
               if (!el) return
-              gsap.fromTo(
+              tweens.push(gsap.fromTo(
                 el,
                 { opacity: 0 },
                 { opacity: 0.6, duration: 0.35, delay: 0.6 + i * 0.2, ease: 'power2.out' }
-              )
+              ))
             })
 
             // Step 5: After all cards are in (~1s), slide panel in from left and settle
-            gsap.delayedCall(1.2, () => setPhase('panel'))
+            const settleTimer = gsap.delayedCall(1.2, () => setPhase('panel'))
+            tweens.push(settleTimer)
           })
+          tweens.push(holdTimer)
         },
       }
     )
+    tweens.push(heroTween)
+
+    return () => tweens.forEach(t => t.kill())
   }, [phase, tracks])
 
   useEffect(() => {
     if (phase !== 'panel' || !containerRef.current) return
 
     // Slide the whole panel into its final left-side position from off-screen
-    gsap.fromTo(
+    const tween = gsap.fromTo(
       containerRef.current,
       { x: -380, opacity: 0 },
       { x: 0, opacity: 1, duration: 0.4, ease: 'power3.out' }
     )
+
+    return () => tween.kill()
   }, [phase])
 
   if (!visible || !tracks.length) return null
@@ -279,7 +290,7 @@ export default function ResultsList({ tracks = [], visible, onSelect, flashScene
         {tracks.map((track, i) => (
           <div
             key={track.spotify_url || i}
-            ref={el => (rowRefs.current[i] = el)}
+            ref={el => { if (i === 0) rowRefs.current = []; rowRefs.current[i] = el }}
             style={{
               opacity: 0,
               // During hero phase, #1 is positioned absolutely center-screen
