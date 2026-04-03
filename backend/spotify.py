@@ -24,14 +24,18 @@ def get_access_token() -> str | None:
     if _token_cache.get("token") and _token_cache.get("expires_at", 0) > now + 60:
         return _token_cache["token"]
 
-    response = requests.post(
-        SPOTIFY_TOKEN_URL,
-        data={"grant_type": "client_credentials"},
-        auth=(client_id, client_secret),
-        timeout=10,
-    )
-    response.raise_for_status()
-    data = response.json()
+    try:
+        response = requests.post(
+            SPOTIFY_TOKEN_URL,
+            data={"grant_type": "client_credentials"},
+            auth=(client_id, client_secret),
+            timeout=10,
+        )
+        response.raise_for_status()
+        data = response.json()
+    except requests.RequestException as exc:
+        logger.warning("Failed to obtain Spotify access token: %s", exc)
+        return None
     _token_cache["token"] = data["access_token"]
     _token_cache["expires_at"] = now + data["expires_in"]
     return _token_cache["token"]

@@ -46,13 +46,13 @@ CACHE_TTL = 300  # 5 minutes
 # Mood buckets: list of (bucket_name, keywords, spotify_search_terms)
 _MOOD_BUCKETS = [
     ("melancholic", ["sad", "cry", "lonely", "heartbreak", "lost", "numb", "dark", "empty"], "sad indie slow"),
-    ("energetic",   ["hype", "gym", "workout", "pump", "energy", "rage", "fire"],             "energetic high tempo"),
-    ("romantic",    ["love", "crush", "date", "tender", "warm", "soft"],                       "romantic pop slow"),
-    ("dreamy",      ["dream", "float", "clouds", "hazy", "nostalgic", "golden"],               "dreamy ambient indie"),
-    ("euphoric",    ["party", "dance", "rave", "club", "festival", "happy"],                   "dance electronic upbeat"),
-    ("dark",        ["night", "insomnia", "overthink", "anxiety", "alone", "3am"],             "dark alternative lo-fi"),
-    ("chill",       ["chill", "relax", "afternoon", "coffee", "sunday", "calm"],               "chill lo-fi acoustic"),
-    ("aggressive",  ["angry", "aggressive", "metal", "scream", "intense", "rage"],              "metal hard rock aggressive"),
+    ("energetic", ["hype", "gym", "workout", "pump", "energy", "rage", "fire"], "energetic high tempo"),
+    ("romantic", ["love", "crush", "date", "tender", "warm", "soft"], "romantic pop slow"),
+    ("dreamy", ["dream", "float", "clouds", "hazy", "nostalgic", "golden"], "dreamy ambient indie"),
+    ("euphoric", ["party", "dance", "rave", "club", "festival", "happy"], "dance electronic upbeat"),
+    ("dark", ["night", "insomnia", "overthink", "anxiety", "alone", "3am"], "dark alternative lo-fi"),
+    ("chill", ["chill", "relax", "afternoon", "coffee", "sunday", "calm"], "chill lo-fi acoustic"),
+    ("aggressive", ["angry", "aggressive", "metal", "scream", "intense", "rage"], "metal hard rock aggressive"),
 ]
 
 
@@ -94,6 +94,10 @@ def extract_spotify_id(track: dict) -> str | None:
     return match.group(1) if match else None
 
 
+def _fetch_snippet(track: dict) -> str:
+    return get_lyric_snippet(track["title"], track["artist"])
+
+
 def recommend(query: str, top_k: int = 5) -> list[dict]:
     """
     Returns top_k track dicts ranked by cosine similarity to `query`.
@@ -121,9 +125,7 @@ def recommend(query: str, top_k: int = 5) -> list[dict]:
         features_map = get_audio_features(track_ids, token) if token else {}
 
         with ThreadPoolExecutor(max_workers=10) as ex:
-            snippets = list(
-                ex.map(lambda s: get_lyric_snippet(s["title"], s["artist"]), songs)
-            )
+            snippets = list(ex.map(_fetch_snippet, songs))
 
         embed_strings = [
             build_embed_string(s, features_map.get(extract_spotify_id(s)), snip)
