@@ -21,4 +21,5 @@ frontend/dist/
 *.swo
 
 # Superpowers ephemeral files
-.superpowers/brainstorm/
+.superpowers/
+docs/superpowers/
