@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef } from 'react'
 
 export default function ResultsList({ tracks = [], visible, onSelect }) {
   const cardRefs = useRef([])
@@ -9,6 +9,9 @@ export default function ResultsList({ tracks = [], visible, onSelect }) {
     // Clear any pending timers
     timersRef.current.forEach(t => clearTimeout(t))
     timersRef.current = []
+
+    // Trim stale refs when tracks array shrinks
+    cardRefs.current = cardRefs.current.slice(0, tracks.length)
 
     // Remove visible class from all cards
     cardRefs.current.forEach(el => {
