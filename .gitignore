@@ -1,0 +1,24 @@
+# Secrets
+.env
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.venv/
+*.egg-info/
+dist/
+.pytest_cache/
+
+# Node
+node_modules/
+frontend/dist/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Superpowers ephemeral files
+.superpowers/brainstorm/
