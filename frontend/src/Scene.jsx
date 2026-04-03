@@ -8,8 +8,10 @@ import { gsap } from 'gsap'
 import MoodBlob from './MoodBlob'
 import SatelliteOrbs from './SatelliteOrbs'
 
+const PHASE_SPEED_MULTIPLIER = { idle: 1, loading: 3, revealing: 5, done: 1 }
+
 // Inner component that has access to R3F context
-function SceneInner({ moodConfig, results, onSelectTrack, aberrationRef }) {
+function SceneInner({ moodConfig, results, onSelectTrack, aberrationRef, phase }) {
   // Use a plain JS proxy object for GSAP — never animate the Vector2 directly
   // (GSAP attaches ._gsap to its target; if that target is a Three.js object
   // R3F's prop-diffing JSON.stringify hits a circular reference)
@@ -35,6 +37,8 @@ function SceneInner({ moodConfig, results, onSelectTrack, aberrationRef }) {
     },
   }))
 
+  const speedMultiplier = PHASE_SPEED_MULTIPLIER[phase] ?? 1
+
   return (
     <>
       <ambientLight intensity={0.1} />
@@ -54,7 +58,7 @@ function SceneInner({ moodConfig, results, onSelectTrack, aberrationRef }) {
       </mesh>
 
       <MoodBlob
-        speed={moodConfig.speed}
+        speed={moodConfig.speed * speedMultiplier}
         intensity={moodConfig.intensity}
         color1={moodConfig.color1}
         color2={moodConfig.color2}
@@ -82,7 +86,7 @@ const SceneInnerWithRef = forwardRef(function SceneInnerWithRef(props, ref) {
   return <SceneInner {...props} aberrationRef={ref} />
 })
 
-export default function Scene({ moodConfig, results, onSelectTrack, onFlashRef }) {
+export default function Scene({ moodConfig, results, onSelectTrack, onFlashRef, phase }) {
   const aberrationRef = useRef()
 
   // Pass flash function up to App via callback ref
@@ -102,6 +106,7 @@ export default function Scene({ moodConfig, results, onSelectTrack, onFlashRef }
         moodConfig={moodConfig}
         results={results}
         onSelectTrack={onSelectTrack}
+        phase={phase}
       />
     </Canvas>
   )
