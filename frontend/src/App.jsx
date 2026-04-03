@@ -28,6 +28,7 @@ export default function App() {
   const statusRef = useRef(null)
   const statusTweenRef = useRef(null)
   const statusIndexRef = useRef(0)
+  const doneTimerRef = useRef(null)
 
   // Cycle status messages during loading phase
   useEffect(() => {
@@ -64,10 +65,16 @@ export default function App() {
     return () => statusTweenRef.current?.kill()
   }, [phase])
 
+  // Clear done-transition timer on unmount
+  useEffect(() => {
+    return () => clearTimeout(doneTimerRef.current)
+  }, [])
+
   const submit = useCallback(async (e) => {
     e.preventDefault()
     if (!query.trim()) return
 
+    clearTimeout(doneTimerRef.current)
     setPhase('loading')
     setError(null)
     setSelectedTrack(null)
@@ -85,7 +92,7 @@ export default function App() {
       setResults(res.data)
       setPhase('revealing')
       // Transition to done after reveal animation completes (~1.5s for all rows)
-      setTimeout(() => setPhase('done'), 1600)
+      doneTimerRef.current = setTimeout(() => setPhase('done'), 1600)
     } catch (err) {
       setError('Could not reach the server. Is the backend running?')
       setResults([])
