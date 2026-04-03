@@ -10,16 +10,20 @@ SPOTIFY_AUDIO_FEATURES_URL = "https://api.spotify.com/v1/audio-features"
 
 # Lazy-init genius client (avoids import cost at module load)
 _genius_client = None
+_GENIUS_DISABLED = object()  # sentinel: token was absent at init time
 
 
 def _get_genius():
     global _genius_client
+    if _genius_client is _GENIUS_DISABLED:
+        return None
     if _genius_client is None:
         import lyricsgenius
 
         token = os.getenv("GENIUS_ACCESS_TOKEN")
         if not token:
             logger.warning("GENIUS_ACCESS_TOKEN not set — lyric snippets disabled")
+            _genius_client = _GENIUS_DISABLED
             return None
         _genius_client = lyricsgenius.Genius(
             token,
@@ -34,7 +38,7 @@ def _get_genius():
 def get_audio_features(track_ids: list[str], token: str) -> dict[str, dict]:
     """
     Batch-fetch Spotify audio features for up to 100 track IDs.
-    Returns {track_id: features_dict}. Missing IDs map to None.
+    Returns {track_id: features_dict}. IDs absent from the Spotify response are omitted.
     Any network / API failure returns {}.
     """
     if not track_ids or not token:
@@ -42,6 +46,9 @@ def get_audio_features(track_ids: list[str], token: str) -> dict[str, dict]:
     valid_ids = [tid for tid in track_ids if tid]
     if not valid_ids:
         return {}
+    if len(valid_ids) > 100:
+        logger.warning("get_audio_features: truncating %d IDs to 100 (Spotify limit)", len(valid_ids))
+        valid_ids = valid_ids[:100]
     try:
         response = requests.get(
             SPOTIFY_AUDIO_FEATURES_URL,
@@ -94,7 +101,7 @@ def build_embed_string(track: dict, features: dict | None, snippet: str) -> str:
     artist = track.get("artist", "Unknown")
     base = f"{title} by {artist}"
 
-    if not features:
+    if features is None:
         if snippet:
             return f"{base}. Lyrics: {snippet}"
         return base
