@@ -52,7 +52,7 @@ _MOOD_BUCKETS = [
     ("euphoric",    ["party", "dance", "rave", "club", "festival", "happy"],                   "dance electronic upbeat"),
     ("dark",        ["night", "insomnia", "overthink", "anxiety", "alone", "3am"],             "dark alternative lo-fi"),
     ("chill",       ["chill", "relax", "afternoon", "coffee", "sunday", "calm"],               "chill lo-fi acoustic"),
-    ("aggressive",  ["angry", "aggressive", "metal", "scream", "intense"],                     "metal hard rock aggressive"),
+    ("aggressive",  ["angry", "aggressive", "metal", "scream", "intense", "rage"],              "metal hard rock aggressive"),
 ]
 
 
